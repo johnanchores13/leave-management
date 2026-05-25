@@ -1,0 +1,323 @@
+<div class="dashboard-container">
+    <nav class="top-navbar">
+        <div class="navbar-left">
+            <button class="burger-btn" (click)="toggleMenu()">
+                <span style="font-size: 1.5rem; line-height: 1;">&#9776;</span>
+            </button>
+        </div>
+        <div class="navbar-right">
+            <h2 class="navbar-title">Area Amministratore</h2>
+        </div>
+    </nav>
+
+    <div class="drawer-overlay" *ngIf="isMenuOpen" (click)="closeMenu()"></div>
+
+    <aside class="side-drawer" [class.open]="isMenuOpen">
+        <div class="drawer-header">
+            <h2>Menu Admin</h2>
+        </div>
+        <ul class="drawer-menu">
+            <li [class.active]="activeSection === 'dipendenti'" (click)="cambiaSezione('dipendenti')">Dipendenti</li>
+            <li [class.active]="activeSection === 'saldi'" (click)="cambiaSezione('saldi')">Saldi</li>
+            <li [class.active]="activeSection === 'reparti'" (click)="cambiaSezione('reparti')">Reparti</li>
+            <li [class.active]="activeSection === 'festivita'" (click)="cambiaSezione('festivita')">Festività</li>
+            <li (click)="logout()" class="logout-btn">Logout</li>
+        </ul>
+    </aside>
+
+    <main class="content">
+
+        <div *ngIf="activeSection === 'dipendenti'" class="section-card">
+            <h2>Lista dipendenti</h2>
+            <p *ngIf="listaDipendenti.length === 0">Nessun dipendente registrato.</p>
+            <table class="modern-table" *ngIf="listaDipendenti.length > 0">
+                <thead>
+                    <tr>
+                        <th>Matricola</th>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Ruolo</th>
+                        <th>Reparto</th>
+                        <th>Responsabile</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let d of listaDipendenti">
+                        <td>{{ d.serialNumber }}</td>
+                        <td>{{ d.firstName }} {{ d.lastName }}</td>
+                        <td>{{ d.email }}</td>
+                        <td>{{ d.roleName }}</td>
+                        <td>{{ d.departmentName }}</td>
+                        <td>{{ d.managerFirstName }} {{ d.managerLastName }}</td>
+                        <td>
+                            <button class="btn-info" (click)="vedisaldo(d.employeeId, d.firstName + ' ' + d.lastName)"
+                                style="margin-right: 8px;">
+                                Saldo
+                            </button>
+                            <button class="btn-primary"
+                                (click)="apriModificaDipendente(d.employeeId, d.departmentId, d.managerId)"
+                                style="margin-right: 8px;">
+                                Modifica
+                            </button>
+                            <button class="btn-danger"
+                                (click)="eliminaDipendente(d.employeeId, d.firstName + ' ' + d.lastName)">
+                                Elimina
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;" *ngIf="totalPages > 1">
+                <button class="btn-primary" [disabled]="currentPage === 0"
+                    (click)="cambiaPagina(currentPage - 1)">Indietro</button>
+                <span>Pagina {{ currentPage + 1 }} di {{ totalPages }}</span>
+                <button class="btn-primary" [disabled]="currentPage === totalPages - 1"
+                    (click)="cambiaPagina(currentPage + 1)">Avanti</button>
+            </div>
+
+            <button class="btn-primary" style="margin-top: 20px;" (click)="mostraModalCreaDipendente = true">
+                + Crea nuovo dipendente
+            </button>
+
+            <div class="modal-overlay" *ngIf="mostraModalCreaDipendente">
+                <div class="modal-content">
+                    <button class="modal-close" (click)="mostraModalCreaDipendente = false">&times;</button>
+                    <h2>Crea nuovo dipendente</h2>
+                    <form [formGroup]="employeeForm" (ngSubmit)="creaDipendente()" class="modern-form">
+                        <div class="form-row">
+                            <label>Nome: <input type="text" formControlName="firstName"></label>
+                            <label>Cognome: <input type="text" formControlName="lastName"></label>
+                        </div>
+                        <div class="form-row">
+                            <label>Email: <input type="email" formControlName="email"></label>
+                            <label>Matricola: <input type="text" formControlName="serialNumber"></label>
+                        </div>
+                        <div class="form-row">
+                            <label>Password temporanea: <input type="password" formControlName="password"></label>
+                            <label>Ruolo:
+                                <select formControlName="role">
+                                    <option value="DIPENDENTE">Dipendente</option>
+                                    <option value="RESPONSABILE">Responsabile</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Data Assunzione</span>
+                                <input type="date" formControlName="hiringDate">
+                            </label>
+
+                        </div>
+                        <div class="form-row">
+                            <label>Reparto:
+                                <select formControlName="departmentId">
+                                    <option value="">— Nessuno —</option>
+                                    <option *ngFor="let r of listaReparti" [value]="r.departmentId">
+                                        {{ r.name }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label>Responsabile:
+                                <select formControlName="managerId">
+                                    <option value="">— Nessuno —</option>
+                                    <option *ngFor="let r of dipendentiResponsabili" [value]="r.employeeId">
+                                        {{ r.firstName }} {{ r.lastName }}
+                                    </option>
+                                </select>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn-primary">Crea dipendente</button>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-overlay" *ngIf="mostraModalModificaDipendente">
+                <div class="modal-content">
+                    <button class="modal-close" (click)="chiudiModalModificaDipendente()">&times;</button>
+                    <h2>Modifica dipendente</h2>
+                    <form [formGroup]="modificaForm" (ngSubmit)="salvaModificaDipendente()" class="modern-form">
+                        <div class="form-row">
+                            <label>Reparto:
+                                <select formControlName="departmentId">
+                                    <option value="">— Nessuno —</option>
+                                    <option *ngFor="let r of listaReparti" [value]="r.departmentId">
+                                        {{ r.name }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label>Responsabile:
+                                <select formControlName="managerId">
+                                    <option value="">— Nessuno —</option>
+                                    <option *ngFor="let r of dipendentiResponsabili" [value]="r.employeeId">
+                                        {{ r.firstName }} {{ r.lastName }}
+                                    </option>
+                                </select>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Salva</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="activeSection === 'reparti'" class="section-card">
+            <h2>Gestione Reparti</h2>
+
+            <table class="modern-table" *ngIf="listaReparti.length > 0">
+                <thead>
+                    <tr>
+                        <th>Nome Reparto</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let r of listaReparti">
+                        <td>{{ r.name }}</td>
+                        <td>
+                            <button class="btn-primary" (click)="apriModificaReparto(r)"
+                                style="margin-right: 8px;">Modifica</button>
+                            <button class="btn-danger" (click)="eliminaReparto(r.departmentId)">Elimina</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <button class="btn-primary" style="margin-top: 20px;" (click)="mostraModalCreaReparto = true">
+                + Crea nuovo reparto
+            </button>
+
+            <div class="modal-overlay" *ngIf="mostraModalCreaReparto || mostraModalModificaReparto">
+                <div class="modal-content">
+                    <button class="modal-close" (click)="chiudiModalReparto()">&times;</button>
+                    <h2>{{ mostraModalModificaReparto ? 'Modifica Reparto' : 'Crea nuovo reparto' }}</h2>
+                    <form [formGroup]="repartoForm" (ngSubmit)="salvaReparto()" class="modern-form">
+                        <div class="form-row">
+                            <label>Nome reparto: <input type="text" formControlName="name"></label>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Salva</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div *ngIf="activeSection === 'festivita'" class="section-card">
+            <h2>Gestione festività</h2>
+
+            <table class="modern-table" *ngIf="listaFestivita.length > 0">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrizione</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let f of listaFestivita">
+                        <td>{{ f.date | date:'dd/MM/yyyy' }}</td>
+                        <td>{{ f.description }}</td>
+                        <td>
+                            <button class="btn-primary" (click)="apriModificaFestivita(f)"
+                                style="margin-right: 8px;">Modifica</button>
+                            <button class="btn-danger" (click)="eliminaFestivita(f.id)">Elimina</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <button class="btn-primary" style="margin-top: 20px;" (click)="mostraModalCreaFestivita = true">
+                + Aggiungi festività
+            </button>
+
+            <div class="modal-overlay" *ngIf="mostraModalCreaFestivita || mostraModalModificaFestivita">
+                <div class="modal-content">
+                    <button class="modal-close" (click)="chiudiModalFestivita()">&times;</button>
+                    <h2>{{ mostraModalModificaFestivita ? 'Modifica Festività' : 'Aggiungi Festività' }}</h2>
+                    <form [formGroup]="festivitaForm" (ngSubmit)="salvaFestivita()" class="modern-form">
+                        <div class="form-row">
+                            <label>Data: <input type="date" formControlName="date"></label>
+                        </div>
+                        <div class="form-row">
+                            <label>Descrizione: <input type="text" formControlName="description"></label>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Salva</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="activeSection === 'saldi'" class="section-card">
+            <h2>Gestione saldi</h2>
+
+            <p *ngIf="listaSaldi.length === 0">Nessun saldo registrato.</p>
+            <table class="modern-table" *ngIf="listaSaldi.length > 0">
+                <thead>
+                    <tr>
+                        <th>Dipendente</th>
+                        <th>Tipo</th>
+                        <th>Anno</th>
+                        <th>Totale</th>
+                        <th>Utilizzati</th>
+                        <th>Rimanenti</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let s of listaSaldi">
+                        <td>{{ s.employeeFullName }}</td>
+                        <td>{{ s.leaveType === 'VACATION' ? 'Ferie' : 'Permessi' }}</td>
+                        <td>{{ s.referenceYear }}</td>
+                        <td>{{ s.totalQuantity }} {{ s.leaveType === 'VACATION' ? 'giorni' : 'ore' }}</td>
+                        <td>{{ s.usedQuantity }} {{ s.leaveType === 'VACATION' ? 'giorni' : 'ore' }}</td>
+                        <td><strong>{{ s.remainingBalance }} {{ s.leaveType === 'VACATION' ? 'giorni' : 'ore' }}</strong></td>
+                        <td>
+                            <button class="btn-primary" (click)="apriModificaSaldo(s)">Modifica</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <button class="btn-primary" style="margin-top: 20px;" (click)="apriCreaSaldo()" style="margin-right: 8px;">
+                + Imposta nuovo saldo
+            </button>
+            <button class="btn-primary" style="margin-top: 10px;" (click)="simulaMese()" style="margin-right: 8px;">
+                Simula passaggio di un mese [TEST]
+            </button>
+
+            <div class="modal-overlay" *ngIf="mostraModalSaldo">
+                <div class="modal-content">
+                    <button class="modal-close" (click)="chiudiModalSaldo()">&times;</button>
+                    <h2>{{ saldoInModifica ? 'Modifica saldo' : 'Imposta nuovo saldo' }}</h2>
+                    <form [formGroup]="saldoForm" (ngSubmit)="impostaSaldo()" class="modern-form">
+                        <div class="form-row">
+                            <label>Dipendente:
+                                <select formControlName="employeeId" [attr.disabled]="saldoInModifica ? true : null">
+                                    <option value="">— Seleziona —</option>
+                                    <option *ngFor="let d of listaTuttiDipendenti" [value]="d.employeeId">
+                                        {{ d.firstName }} {{ d.lastName }} ({{ d.serialNumber }})
+                                    </option>
+                                </select>
+                            </label>
+                            <label>Tipo:
+                                <select formControlName="leaveType" [attr.disabled]="saldoInModifica ? true : null">
+                                    <option value="VACATION">Ferie</option>
+                                    <option value="PERMIT">Permessi</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="form-row">
+                            <label>Anno:
+                                <input type="number" formControlName="referenceYear"
+                                    [attr.disabled]="saldoInModifica ? true : null">
+                            </label>
+                            <label>Quantità totale:
+                                <input type="number" formControlName="totalQuantity"
+                                    placeholder="Es: 20 per ferie, 48 per permessi">
+                            </label>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Salva</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>

@@ -1,0 +1,292 @@
+<div class="dashboard-container">
+
+  <nav class="top-navbar">
+    <div class="navbar-left">
+      <button class="burger-btn" (click)="toggleMenu()">
+        <span style="font-size: 1.5rem; line-height: 1;">&#9776;</span>
+      </button>
+    </div>
+    <div class="navbar-right">
+      <div class="notification-container" (click)="apriNotifiche()">
+        <div class="bell-wrapper" [class.has-notifications]="notificheNonLette > 0">
+          <span class="bell-icon">🔔</span>
+          <span class="notification-badge" *ngIf="notificheNonLette > 0">{{ notificheNonLette }}</span>
+        </div>
+      </div>
+      <h2 class="navbar-title">Area Dipendente</h2>
+    </div>
+  </nav>
+
+  <div class="drawer-overlay" *ngIf="isMenuOpen" (click)="closeMenu()"></div>
+
+  <aside class="side-drawer" [class.open]="isMenuOpen">
+    <div class="drawer-header">
+      <h2>Menu</h2>
+    </div>
+    <ul class="drawer-menu">
+      <li [class.active]="activeSection === 'profilo'" (click)="cambiaSezione('profilo')">Profilo</li>
+      <li [class.active]="activeSection === 'nuova'" (click)="cambiaSezione('nuova')"> Nuova richiesta</li>
+      <li [class.active]="activeSection === 'attesa'" (click)="cambiaSezione('attesa')"> Richieste in attesa</li>
+      <li [class.active]="activeSection === 'storico'" (click)="cambiaSezione('storico')"> Storico richieste</li>
+      <li [class.active]="activeSection === 'password'" (click)="cambiaSezione('password')"> Cambia password</li>
+      <li *ngIf="authService.getRole() === 'RESPONSABILE'" routerLink="/manager" style="border-top: 1px solid #34495e;">
+        Area Responsabile
+      </li>
+      <li (click)="logout()" class="logout-btn"> Logout</li>
+    </ul>
+  </aside>
+
+  <div class="modal-overlay" *ngIf="isNotificationsModalOpen" (click)="chiudiNotifiche()">
+    <div class="modal-content" style="width: 800px; max-width: 95%;" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="chiudiNotifiche()">&times;</button>
+      <h2>Notifiche</h2>
+      <p *ngIf="notificheNonLette === 0">Nessuna nuova notifica.</p>
+
+      <div *ngIf="notificheDipendente > 0">
+        <h3 style="margin-bottom: 15px; color: #475569;">Le tue richieste</h3>
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Periodo</th>
+              <th>Stato</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let r of storicoRichieste">
+              <tr *ngIf="r.readByEmployee === false">
+                <td>{{ r.leaveType === 'VACATION' ? 'Ferie' : 'Permesso' }}</td>
+                <td>{{ formatPeriodo(r) }}</td>
+                <td>
+                  <span class="status-badge" [ngClass]="r.leaveStatus">
+                    {{ r.leaveStatus === 'APPROVED' ? 'Approvata' : (r.leaveStatus === 'REJECTED' ? 'Rifiutata' :
+                    'Annullata') }}
+                  </span>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="managerUnreadCount > 0" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 15px; color: #475569;">Nuove richieste dal team</h3>
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Dipendente</th>
+              <th>Tipo</th>
+              <th>Periodo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of managerUnreadList">
+              <td>{{ r.employee?.firstName }} {{ r.employee?.lastName }}</td>
+              <td>{{ r.leaveType === 'VACATION' ? 'Ferie' : 'Permesso' }}</td>
+              <td>{{ formatPeriodo(r) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <main class="content">
+
+    <div *ngIf="activeSection === 'nuova'" class="section-card">
+      <h2>Il tuo saldo</h2>
+      <div class="balance-cards">
+        <div class="balance-card" *ngFor="let s of saldoAnnoCorrente">
+          <div class="balance-label">{{ s.leaveType === 'VACATION' ? 'Ferie' : 'Permessi' }}</div>
+          <div class="balance-numbers">
+            <span class="balance-remaining">{{ arrotondaPerDifetto(s.remainingBalance) }} {{ s.leaveType === 'VACATION' ? 'giorni' : 'ore' }}</span>
+            <span class="balance-total"> / {{ arrotondaPerDifetto(s.totalQuantity) }} {{ s.leaveType === 'VACATION' ? 'giorni' : 'ore' }}</span>
+          </div>
+          <div class="balance-bar-bg">
+            <div class="balance-bar-fill"
+              [style.width.%]="s.totalQuantity > 0 ? (s.remainingBalance / s.totalQuantity * 100) : 0">
+            </div>
+          </div>
+          <div class="balance-used">{{ arrotondaPerDifetto(s.usedQuantity) }} {{ s.leaveType === 'VACATION' ? 'giorni
+            utilizzati' : 'ore utilizzate' }}</div>
+        </div>
+      </div>
+
+
+      <h2>Richiedi ferie o permessi</h2>
+      <form [formGroup]="richiestaForm" (ngSubmit)="inviaRichiesta()" class="modern-form">
+        <label>Tipo di richiesta
+          <select formControlName="leaveType">
+            <option value="VACATION">Ferie </option>
+            <option value="PERMIT">Permesso </option>
+          </select>
+        </label>
+
+        <div *ngIf="richiestaForm.value.leaveType === 'VACATION'" class="form-row">
+          <label>
+            <span>Data Inizio<span class="required-asterisk">*</span></span>
+            <input type="date" formControlName="startDate" lang="it" [min]="oggi">
+            <small class="error-text"
+              *ngIf="(richiestaForm.get('startDate')?.touched || isSubmitted) && !richiestaForm.value.startDate">La data
+              di inizio è obbligatoria.</small>
+          </label>
+
+          <label>
+            <span>Data Fine<span class="required-asterisk">*</span></span>
+            <input type="date" formControlName="endDate" lang="it" [min]="richiestaForm.value.startDate || oggi">
+            <small class="error-text"
+              *ngIf="(richiestaForm.get('endDate')?.touched || isSubmitted) && !richiestaForm.value.endDate">La data di
+              fine è obbligatoria.</small>
+          </label>
+        </div>
+
+        <div *ngIf="richiestaForm.value.leaveType === 'PERMIT'" class="form-row">
+          <label>
+            <span>Data<span class="required-asterisk">*</span></span>
+            <input type="date" formControlName="permitDate" lang="it" [min]="oggi">
+            <small class="error-text"
+              *ngIf="(richiestaForm.get('permitDate')?.touched || isSubmitted) && !richiestaForm.value.permitDate">La
+              data è obbligatoria.</small>
+          </label>
+
+          <label>
+            <span>Ora Inizio<span class="required-asterisk">*</span></span>
+            <input type="time" formControlName="startTime">
+            <small class="error-text"
+              *ngIf="(richiestaForm.get('startTime')?.touched || isSubmitted) && !richiestaForm.value.startTime">L'ora è
+              obbligatoria.</small>
+          </label>
+
+          <label>
+            <span>Ora Fine<span class="required-asterisk">*</span></span>
+            <input type="time" formControlName="endTime">
+            <small class="error-text"
+              *ngIf="(richiestaForm.get('endTime')?.touched || isSubmitted) && !richiestaForm.value.endTime">L'ora è
+              obbligatoria.</small>
+          </label>
+        </div>
+
+        <label style="margin-top: 15px;">
+          <span>Motivo<span class="required-asterisk">*</span></span>
+          <textarea formControlName="reason" rows="3" placeholder="Scrivi un motivo..."></textarea>
+          <small class="error-text"
+            *ngIf="(richiestaForm.get('reason')?.touched || isSubmitted) && !richiestaForm.value.reason">Il motivo è
+            obbligatorio.</small>
+        </label>
+
+
+        <button type="submit" class="btn-primary">Invia richiesta</button>
+      </form>
+    </div>
+
+    <div *ngIf="activeSection === 'attesa'" class="section-card">
+      <h2>Richieste in attesa</h2>
+      <p *ngIf="richiesteInAttesa.length === 0">Nessuna richiesta in attesa di approvazione.</p>
+
+      <table class="modern-table" *ngIf="richiesteInAttesa.length > 0">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Periodo</th>
+            <th>Note</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of richiesteInAttesa">
+            <td>{{ r.leaveType === 'VACATION' ? 'Ferie' : 'Permesso' }}</td>
+            <td>{{ formatPeriodo(r) }}</td>
+            <td>{{ r.reason }}</td>
+            <td>
+              <button class="btn-danger" (click)="annullaRichiesta(r.requestId)">Annulla</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="activeSection === 'storico'" class="section-card">
+      <h2>Storico richieste</h2>
+      <p *ngIf="storicoRichieste.length === 0">Nessuna richiesta processata.</p>
+
+      <table class="modern-table" *ngIf="storicoRichieste.length > 0">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Periodo</th>
+            <th>Stato</th>
+            <th>Motivo Rifiuto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of storicoRichieste">
+            <td>{{ r.leaveType === 'VACATION' ? 'Ferie' : 'Permesso' }}</td>
+            <td>{{ formatPeriodo(r) }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="r.leaveStatus">
+                {{ r.leaveStatus === 'APPROVED' ? 'Approvata' : (r.leaveStatus === 'REJECTED' ? 'Rifiutata' :
+                'Annullata') }}
+              </span>
+            </td>
+            <td>{{ r.rejectionReason || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+
+    <div *ngIf="activeSection === 'password'" class="section-card">
+      <h2>Cambia password</h2>
+      <div class="modern-form">
+        <div class="form-group">
+          <label>Password attuale</label>
+          <input type="password" [(ngModel)]="oldPassword" />
+        </div>
+        <div class="form-group">
+          <label>Nuova password</label>
+          <input type="password" [(ngModel)]="newPassword" />
+        </div>
+        <button class="btn-primary" (click)="cambiaPassword()">Aggiorna Password</button>
+      </div>
+    </div>
+
+    <div *ngIf="activeSection === 'profilo'" class="section-card">
+      <h2>Il mio profilo</h2>
+      <div *ngIf="profilo" class="profilo-card">
+        <div class="profilo-avatar">
+          {{ profilo.firstName?.charAt(0) }}{{ profilo.lastName?.charAt(0) }}
+        </div>
+        <div class="profilo-nome">{{ profilo.firstName }} {{ profilo.lastName }}</div>
+        <div class="profilo-ruolo">{{ profilo.roleName }}</div>
+
+        <div class="profilo-grid">
+          <div class="profilo-field">
+            <span class="profilo-label">Matricola</span>
+            <span class="profilo-value">{{ profilo.serialNumber }}</span>
+          </div>
+          <div class="profilo-field">
+            <span class="profilo-label">Email</span>
+            <span class="profilo-value">{{ profilo.email }}</span>
+          </div>
+          <div class="profilo-field">
+            <span class="profilo-label">Reparto</span>
+            <span class="profilo-value">{{ profilo.departmentName || '—' }}</span>
+          </div>
+          <div class="profilo-field">
+            <span class="profilo-label">Responsabile</span>
+            <span class="profilo-value">
+              {{ (profilo.managerFirstName && profilo.managerLastName) ? profilo.managerFirstName + ' ' +
+              profilo.managerLastName : '—' }}
+            </span>
+          </div>
+          <div class="profilo-field">
+            <span class="profilo-label">Data di assunzione</span>
+            <span class="profilo-value">{{ profilo.hiringDate | date:'dd/MM/yyyy' }}</span>
+          </div>
+        </div>
+      </div>
+      <p *ngIf="!profilo" style="color:#94a3b8;">Caricamento profilo...</p>
+    </div>
+
+  </main>
+</div>
