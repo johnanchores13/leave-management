@@ -1,6 +1,7 @@
 package com.exprivia.leave_management.service;
 
 import com.exprivia.leave_management.dto.AdminEmployeeDTO;
+import com.exprivia.leave_management.dto.UpdateEmployeeDTO;
 import com.exprivia.leave_management.entity.Department;
 import com.exprivia.leave_management.entity.Employee;
 import com.exprivia.leave_management.exception.InvalidRequestException;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class AdminService {
@@ -53,8 +53,7 @@ public class AdminService {
     }
 
     public List<AdminEmployeeDTO> getManagers() {
-        return employeeRepository.findAll().stream()
-                .filter(e -> e.getRole() != null && "RESPONSABILE".equals(e.getRole().getName()))
+        return employeeRepository.findByRole_Name("RESPONSABILE").stream()
                 .map(e -> {
                     AdminEmployeeDTO dto = new AdminEmployeeDTO();
                     dto.setEmployeeId(e.getEmployeeId());
@@ -65,30 +64,23 @@ public class AdminService {
     }
 
     @Transactional
-    public void updateEmployee(Long employeeId, Map<String, Object> body) {
+    public void updateEmployee(Long employeeId, UpdateEmployeeDTO dto) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato."));
 
-        if (body.containsKey("departmentId")) {
-            Long departmentId = Long.valueOf(body.get("departmentId").toString());
-            Department department = departmentRepository.findById(departmentId)
+        if (dto.getDepartmentId() != null) {
+            Department department = departmentRepository.findById(dto.getDepartmentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Reparto non trovato."));
             employee.setDepartment(department);
         }
 
-        if (body.containsKey("managerId")) {
-            Object managerIdObj = body.get("managerId");
-            if (managerIdObj == null) {
-                employee.setManager(null);
-            } else {
-                Long managerId = Long.valueOf(managerIdObj.toString());
-                if (managerId.equals(employeeId)) {
-                    throw new InvalidRequestException("Un dipendente non può essere responsabile di sé stesso.");
-                }
-                Employee manager = employeeRepository.findById(managerId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Responsabile non trovato."));
-                employee.setManager(manager);
+        if (dto.getManagerId() != null) {
+            if (dto.getManagerId().equals(employeeId)) {
+                throw new InvalidRequestException("Un dipendente non può essere responsabile di sé stesso.");
             }
+            Employee manager = employeeRepository.findById(dto.getManagerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Responsabile non trovato."));
+            employee.setManager(manager);
         }
 
         employeeRepository.save(employee);
@@ -113,4 +105,5 @@ public class AdminService {
         department.setName(nome);
         departmentRepository.save(department);
     }
+
 }

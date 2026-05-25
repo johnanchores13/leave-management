@@ -10,7 +10,10 @@ import com.exprivia.leave_management.entity.LeaveStatus;
 import com.exprivia.leave_management.exception.ResourceNotFoundException;
 import com.exprivia.leave_management.exception.UnauthorizedException;
 import com.exprivia.leave_management.repository.EmployeeRepository;
+import com.exprivia.leave_management.service.EmployeeService;
+import com.exprivia.leave_management.service.AuthService;
 import com.exprivia.leave_management.service.LeaveAccrualService;
+import com.exprivia.leave_management.service.LeaveBalanceService;
 import com.exprivia.leave_management.service.LeaveRequestService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,8 +32,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping({ "/api/richieste" })
+@RequestMapping({ "/api/requests" })
 public class RequestController {
+
+   @Autowired
+   private LeaveBalanceService leaveBalanceService;
+
+   @Autowired
+   private AuthService authService;
+
    @Autowired
    private JwtUtil jwtUtil;
    @Autowired
@@ -39,9 +49,12 @@ public class RequestController {
    private LeaveAccrualService accrualService;
 
    @Autowired
+   private EmployeeService employeeService;
+
+   @Autowired
    private EmployeeRepository employeeRepository;
 
-   @PostMapping({ "/invia" })
+   @PostMapping({ "/submit" })
    public ResponseEntity<LeaveRequestResponseDTO> sendRequest(@RequestBody @Valid LeaveRequestDTO dto,
          HttpServletRequest request) {
       Long employeeId = this.getAuthenticatedEmployeeId(request);
@@ -49,14 +62,14 @@ public class RequestController {
       return ResponseEntity.ok(saved);
    }
 
-   @GetMapping({ "/dipendente" })
+   @GetMapping({ "/employee" })
    public ResponseEntity<List<LeaveRequestResponseDTO>> getMyRequests(HttpServletRequest request) {
       Long employeeId = this.getAuthenticatedEmployeeId(request);
       return ResponseEntity.ok(this.leaveRequestService.getLeaveRequestsByEmployee(employeeId));
    }
 
    @PreAuthorize("hasRole('RESPONSABILE')")
-   @PutMapping("/{requestId}/approva")
+   @PutMapping("/{requestId}/approve")
    public ResponseEntity<LeaveRequestResponseDTO> approveRequest(
          @PathVariable Long requestId, HttpServletRequest request) {
       Long managerId = getAuthenticatedEmployeeId(request);
@@ -66,7 +79,7 @@ public class RequestController {
    }
 
    @PreAuthorize("hasRole('RESPONSABILE')")
-   @PutMapping("/{requestId}/rifiuta")
+   @PutMapping("/{requestId}/reject")
    public ResponseEntity<LeaveRequestResponseDTO> rejectRequest(
          @PathVariable Long requestId,
          @RequestParam(required = false) String reason,
@@ -77,13 +90,13 @@ public class RequestController {
       return ResponseEntity.ok(updated);
    }
 
-   @GetMapping({ "/saldo" })
+   @GetMapping({ "/balance" })
    public ResponseEntity<List<LeaveBalanceResponseDTO>> getSaldo(HttpServletRequest request) {
       Long employeeId = this.getAuthenticatedEmployeeId(request);
-      return ResponseEntity.ok(this.leaveRequestService.getSaldoByEmployee(employeeId));
+      return ResponseEntity.ok(this.leaveBalanceService.getBalanceByEmployee(employeeId));
    }
 
-   @PutMapping("/{requestId}/annulla")
+   @PutMapping("/{requestId}/cancel")
    public ResponseEntity<String> cancelRequest(@PathVariable Long requestId, HttpServletRequest request) {
       Long employeeId = getAuthenticatedEmployeeId(request);
       leaveRequestService.cancelLeaveRequest(requestId, employeeId);
@@ -92,18 +105,21 @@ public class RequestController {
 
    private Long getAuthenticatedEmployeeId(HttpServletRequest request) {
       String header = request.getHeader("Authorization");
+      if (header == null || !header.startsWith("Bearer ")) {
+         throw new UnauthorizedException("Token di autenticazione mancante o non valido.");
+      }
       String token = header.substring(7);
       return this.jwtUtil.extractEmployeeId(token);
    }
 
    @PreAuthorize("hasRole('RESPONSABILE')")
-   @GetMapping({ "/manager/richieste" })
+   @GetMapping({ "/manager/requests" })
    public ResponseEntity<List<LeaveRequestResponseDTO>> getRequestsForManager(HttpServletRequest request) {
       Long managerId = this.getAuthenticatedEmployeeId(request);
       return ResponseEntity.ok(this.leaveRequestService.getRequestsForManager(managerId));
    }
 
-   @PutMapping("/{requestId}/leggi")
+   @PutMapping("/{requestId}/read")
    @PreAuthorize("hasAnyRole('DIPENDENTE', 'RESPONSABILE')")
    public ResponseEntity<Void> markAsRead(@PathVariable Long requestId, HttpServletRequest request) {
       Long employeeId = getAuthenticatedEmployeeId(request);
@@ -111,7 +127,7 @@ public class RequestController {
       return ResponseEntity.ok().build();
    }
 
-   @PutMapping("/{requestId}/leggi-manager")
+   @PutMapping("/{requestId}/read-manager")
    @PreAuthorize("hasRole('RESPONSABILE')")
    public ResponseEntity<Void> markAsReadByManager(@PathVariable Long requestId, HttpServletRequest request) {
       Long managerId = getAuthenticatedEmployeeId(request);
@@ -120,42 +136,29 @@ public class RequestController {
    }
 
    @PreAuthorize("hasRole('ADMIN')")
-   @PostMapping("/manager/simula-mese")
+   @PostMapping("/manager/simulate-month")
    public ResponseEntity<String> simulaAccreditoMensile() {
       accrualService.accreditRateiMensili();
       return ResponseEntity.ok("Ferie e permessi caricati con successo.");
    }
 
-   @PutMapping({ "/cambia-password" })
-   public ResponseEntity<String> cambiaPassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
+   @PutMapping({ "/change-password" })
+   public ResponseEntity<String> changePassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
       Long employeeId = this.getAuthenticatedEmployeeId(request);
       String vecchiaPassword = (String) body.get("oldPassword");
       String nuovaPassword = (String) body.get("newPassword");
-      this.leaveRequestService.cambiaPassword(employeeId, vecchiaPassword, nuovaPassword);
+      this.authService.changePassword(employeeId, vecchiaPassword, nuovaPassword);
       return ResponseEntity.ok("Password aggiornata con successo.");
    }
 
    @GetMapping("/me")
    public ResponseEntity<ProfileDTO> getProfilo(HttpServletRequest request) {
       Long employeeId = getAuthenticatedEmployeeId(request);
-      Employee emp = employeeRepository.findById(employeeId)
-            .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato."));
-      ProfileDTO dto = new ProfileDTO();
-      dto.setEmployeeId(emp.getEmployeeId());
-      dto.setFirstName(emp.getFirstName());
-      dto.setLastName(emp.getLastName());
-      dto.setEmail(emp.getEmail());
-      dto.setSerialNumber(emp.getSerialNumber());
-      dto.setHiringDate(emp.getHiringDate());
-      dto.setRoleName(emp.getRole() != null ? emp.getRole().getName() : null);
-      dto.setDepartmentName(emp.getDepartment() != null ? emp.getDepartment().getName() : null);
-      dto.setManagerFirstName(emp.getManager() != null ? emp.getManager().getFirstName() : null);
-      dto.setManagerLastName(emp.getManager() != null ? emp.getManager().getLastName() : null);
-      return ResponseEntity.ok(dto);
+      return ResponseEntity.ok(employeeService.getProfile(employeeId));
    }
 
    @PreAuthorize("hasRole('RESPONSABILE')")
-   @GetMapping("/manager/dipendenti/{employeeId}/saldo")
+   @GetMapping("/manager/employees/{employeeId}/balance")
    public ResponseEntity<List<LeaveBalanceResponseDTO>> getSaldoDipendentePerManager(
          @PathVariable Long employeeId,
          HttpServletRequest request) {
@@ -169,6 +172,6 @@ public class RequestController {
          throw new UnauthorizedException("Non sei autorizzato a vedere il saldo di questo dipendente.");
       }
 
-      return ResponseEntity.ok(leaveRequestService.getSaldoByEmployee(employeeId));
+      return ResponseEntity.ok(leaveBalanceService.getBalanceByEmployee(employeeId));
    }
 }

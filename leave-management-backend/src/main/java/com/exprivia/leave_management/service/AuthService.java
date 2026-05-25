@@ -88,4 +88,18 @@ public class AuthService {
     public void createEmployee(RegisterRequest request) {
         this.register(request);
     }
+
+    public void changePassword(Long employeeId, String vecchiaPassword, String nuovaPassword) {
+        Employee employee = (Employee) this.employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato"));
+        if (!this.passwordEncoder.matches(vecchiaPassword, employee.getPassword())) {
+            throw new InvalidRequestException("La password attuale non è corretta.");
+        } else if (nuovaPassword != null && nuovaPassword.matches("^(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$")) {
+            employee.setPassword(this.passwordEncoder.encode(nuovaPassword));
+            this.employeeRepository.save(employee);
+        } else {
+            throw new InvalidRequestException(
+                    "La password deve essere di almeno 8 caratteri e contenere almeno una maiuscola, un numero e un carattere speciale.");
+        }
+    }
 }

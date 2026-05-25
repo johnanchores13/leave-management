@@ -1,8 +1,6 @@
 package com.exprivia.leave_management.service;
 
-import com.exprivia.leave_management.dto.AllBalanceResponseDTO;
 import com.exprivia.leave_management.dto.EmployeeResponseDTO;
-import com.exprivia.leave_management.dto.LeaveBalanceResponseDTO;
 import com.exprivia.leave_management.dto.LeaveRequestDTO;
 import com.exprivia.leave_management.dto.LeaveRequestResponseDTO;
 import com.exprivia.leave_management.entity.Employee;
@@ -29,7 +27,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,9 +41,6 @@ public class LeaveRequestService {
 
    @Autowired
    private HolidayRepository holidayRepository;
-
-   @Autowired
-   private PasswordEncoder passwordEncoder;
 
    public List<LeaveRequestResponseDTO> getLeaveRequestsByEmployee(Long employeeId) {
       Employee employee = (Employee) this.employeeRepository.findById(employeeId)
@@ -102,122 +96,119 @@ public class LeaveRequestService {
       }
       Employee employee = (Employee) this.employeeRepository.findById(employeeId)
             .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato."));
-      LeaveRequest nuovaRichiesta = new LeaveRequest();
-      nuovaRichiesta.setEmployee(employee);
-      nuovaRichiesta.setLeaveType(LeaveType.valueOf(dto.getLeaveType()));
-      nuovaRichiesta.setReason(dto.getReason());
-      nuovaRichiesta.setLeaveStatus(LeaveStatus.PENDING);
-      if (nuovaRichiesta.getLeaveType() == LeaveType.VACATION) {
+      LeaveRequest newRequest = new LeaveRequest();
+      newRequest.setEmployee(employee);
+      newRequest.setLeaveType(LeaveType.valueOf(dto.getLeaveType()));
+      newRequest.setReason(dto.getReason());
+      newRequest.setLeaveStatus(LeaveStatus.PENDING);
+      if (newRequest.getLeaveType() == LeaveType.VACATION) {
          DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-         nuovaRichiesta.setStartDate(LocalDate.parse(dto.getStartDate(), dateFormatter).atStartOfDay());
-         nuovaRichiesta.setEndDate(LocalDate.parse(dto.getEndDate(), dateFormatter).atTime(23, 59));
+         newRequest.setStartDate(LocalDate.parse(dto.getStartDate(), dateFormatter).atStartOfDay());
+         newRequest.setEndDate(LocalDate.parse(dto.getEndDate(), dateFormatter).atTime(23, 59));
 
-         if (nuovaRichiesta.getEndDate().toLocalDate().isBefore(nuovaRichiesta.getStartDate().toLocalDate())) {
+         if (newRequest.getEndDate().toLocalDate().isBefore(newRequest.getStartDate().toLocalDate())) {
             throw new InvalidRequestException("La data di fine non può essere precedente alla data di inizio.");
          }
 
-         if (nuovaRichiesta.getStartDate().toLocalDate().isBefore(LocalDate.now())) {
+         if (newRequest.getStartDate().toLocalDate().isBefore(LocalDate.now())) {
             throw new InvalidRequestException("Non è possibile inserire richieste per date passate.");
          }
 
-         Set<LocalDate> festivita = getFestivita();
+         Set<LocalDate> holidays = getHolidays();
 
-         DayOfWeek startDay = nuovaRichiesta.getStartDate().getDayOfWeek();
-         DayOfWeek endDay = nuovaRichiesta.getEndDate().getDayOfWeek();
+         DayOfWeek startDay = newRequest.getStartDate().getDayOfWeek();
+         DayOfWeek endDay = newRequest.getEndDate().getDayOfWeek();
          if (startDay == DayOfWeek.SATURDAY || startDay == DayOfWeek.SUNDAY
-               || festivita.contains(nuovaRichiesta.getStartDate().toLocalDate())) {
+               || holidays.contains(newRequest.getStartDate().toLocalDate())) {
             throw new InvalidRequestException(
                   "La data di inizio non può coincidere con un weekend o un giorno festivo.");
          }
 
          if (endDay == DayOfWeek.SATURDAY || endDay == DayOfWeek.SUNDAY
-               || festivita.contains(nuovaRichiesta.getEndDate().toLocalDate())) {
+               || holidays.contains(newRequest.getEndDate().toLocalDate())) {
             throw new InvalidRequestException("La data di fine non può coincidere con un weekend o un giorno festivo.");
          }
 
-         long giorniLavorativi = 0L;
+         long workingDays = 0L;
 
-         for (LocalDateTime current = nuovaRichiesta.getStartDate(); !current.toLocalDate()
-               .isAfter(nuovaRichiesta.getEndDate().toLocalDate()); current = current.plusDays(1L)) {
-            DayOfWeek giorno = current.getDayOfWeek();
-            boolean isWeekend = giorno == DayOfWeek.SATURDAY || giorno == DayOfWeek.SUNDAY;
-            boolean isFesta = festivita.contains(current.toLocalDate());
-            if (!isWeekend && !isFesta) {
-               ++giorniLavorativi;
+         for (LocalDateTime current = newRequest.getStartDate(); !current.toLocalDate()
+               .isAfter(newRequest.getEndDate().toLocalDate()); current = current.plusDays(1L)) {
+            DayOfWeek dayOfWeek = current.getDayOfWeek();
+            boolean isWeekend = dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+            boolean isHoliday = holidays.contains(current.toLocalDate());
+            if (!isWeekend && !isHoliday) {
+               ++workingDays;
             }
          }
 
-         if (giorniLavorativi == 0L) {
+         if (workingDays == 0L) {
             throw new InvalidRequestException("Il periodo selezionato non contiene giorni lavorativi.");
          }
 
-         nuovaRichiesta.setRequestedQuantity(BigDecimal.valueOf(giorniLavorativi));
+         newRequest.setRequestedQuantity(BigDecimal.valueOf(workingDays));
 
       } else {
          DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-         nuovaRichiesta.setStartDate(LocalDateTime.parse(dto.getStartDate(), dateTimeFormatter));
-         nuovaRichiesta.setEndDate(LocalDateTime.parse(dto.getEndDate(), dateTimeFormatter));
+         newRequest.setStartDate(LocalDateTime.parse(dto.getStartDate(), dateTimeFormatter));
+         newRequest.setEndDate(LocalDateTime.parse(dto.getEndDate(), dateTimeFormatter));
 
-         if (nuovaRichiesta.getStartDate().isBefore(LocalDateTime.now())) {
+         if (newRequest.getStartDate().isBefore(LocalDateTime.now())) {
             throw new InvalidRequestException("Non è possibile inserire richieste di permesso nel passato.");
          }
 
-         Set<LocalDate> festivita = getFestivita();
+         Set<LocalDate> holidays = getHolidays();
 
-         DayOfWeek day = nuovaRichiesta.getStartDate().getDayOfWeek();
+         DayOfWeek day = newRequest.getStartDate().getDayOfWeek();
          if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY
-               || festivita.contains(nuovaRichiesta.getStartDate().toLocalDate())) {
+               || holidays.contains(newRequest.getStartDate().toLocalDate())) {
             throw new InvalidRequestException(
                   "Non è possibile richiedere un permesso durante un weekend o un giorno festivo.");
          }
 
-         long minutiPermesso = ChronoUnit.MINUTES.between(nuovaRichiesta.getStartDate(), nuovaRichiesta.getEndDate());
-         if (minutiPermesso <= 0L) {
+         long permitMinutes = ChronoUnit.MINUTES.between(newRequest.getStartDate(), newRequest.getEndDate());
+         if (permitMinutes <= 0L) {
             throw new InvalidRequestException("L'ora di fine deve essere successiva all'ora di inizio.");
          }
 
-         double orePermesso = minutiPermesso / 60.0;
-         if (orePermesso < 1.0) {
+         double permitHours = permitMinutes / 60.0;
+         if (permitHours < 1.0) {
             throw new InvalidRequestException("I permessi devono essere di almeno 1 ora.");
          }
-         nuovaRichiesta
-               .setRequestedQuantity(BigDecimal.valueOf(orePermesso).setScale(2, java.math.RoundingMode.HALF_UP));
+         newRequest
+               .setRequestedQuantity(BigDecimal.valueOf(permitHours).setScale(2, java.math.RoundingMode.HALF_UP));
 
       }
 
-      if (nuovaRichiesta.getStartDate().getYear() != nuovaRichiesta.getEndDate().getYear()) {
+      if (newRequest.getStartDate().getYear() != newRequest.getEndDate().getYear()) {
          throw new InvalidRequestException(
                "Non è possibile inserire una richiesta tra due anni. Inserire una richiesta fino al 31 Dicembre e una nuova dal 1 Gennaio.");
       } else {
-         boolean isOverlapping = requestRepository.findByEmployee(employee).stream()
-               .filter(r -> r.getLeaveStatus() != LeaveStatus.REJECTED
-                     && r.getLeaveStatus() != LeaveStatus.CANCELED)
-               .anyMatch(r -> !nuovaRichiesta.getStartDate().isAfter(r.getEndDate()) &&
-                     !nuovaRichiesta.getEndDate().isBefore(r.getStartDate()));
+         boolean isOverlapping = requestRepository.existsOverlapping(
+               employee, newRequest.getStartDate(), newRequest.getEndDate());
          if (isOverlapping) {
             throw new InvalidRequestException(
                   "Esiste già una richiesta (in attesa o approvata) nel periodo selezionato.");
          } else {
             LeaveBalance leaveBalance = (LeaveBalance) this.balanceRepository
-                  .findByEmployeeAndReferenceYearAndLeaveType(employee, nuovaRichiesta.getStartDate().getYear(),
-                        nuovaRichiesta.getLeaveType())
+                  .findByEmployeeAndReferenceYearAndLeaveType(employee, newRequest.getStartDate().getYear(),
+                        newRequest.getLeaveType())
                   .orElseThrow(() -> new ResourceNotFoundException(
-                        "Saldo non trovato per l'anno " + nuovaRichiesta.getStartDate().getYear()));
+                        "Saldo non trovato per l'anno " + newRequest.getStartDate().getYear()));
             BigDecimal pendingQuantity = (BigDecimal) this.requestRepository.findByEmployee(employee).stream()
                   .filter((r) -> r.getLeaveStatus() == LeaveStatus.PENDING)
-                  .filter((r) -> r.getLeaveType() == nuovaRichiesta.getLeaveType())
-                  .filter((r) -> r.getStartDate().getYear() == nuovaRichiesta.getStartDate().getYear())
+                  .filter((r) -> r.getLeaveType() == newRequest.getLeaveType())
+                  .filter((r) -> r.getStartDate().getYear() == newRequest.getStartDate().getYear())
                   .map(LeaveRequest::getRequestedQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal virtualBalance = leaveBalance.getRemainingBalance().subtract(pendingQuantity);
-            if (nuovaRichiesta.getRequestedQuantity().compareTo(virtualBalance) > 0) {
+            if (newRequest.getRequestedQuantity().compareTo(virtualBalance) > 0) {
                String var10002 = leaveBalance.getRemainingBalance().stripTrailingZeros().toPlainString();
                String formattedPending = pendingQuantity.stripTrailingZeros().toPlainString();
-               String unit = nuovaRichiesta.getLeaveType() == LeaveType.VACATION ? " giorni" : " ore";
+               String unit = newRequest.getLeaveType() == LeaveType.VACATION ? " giorni" : " ore";
                throw new InsufficientBalanceException("Saldo insufficiente. Saldo reale: " + var10002 + unit
                      + ". Quantità già bloccata in altre richieste in attesa: " + formattedPending + unit);
             } else {
-               nuovaRichiesta.setCreationDate(LocalDateTime.now());
-               return this.toDTO((LeaveRequest) this.requestRepository.save(nuovaRichiesta));
+               newRequest.setCreationDate(LocalDateTime.now());
+               return this.toDTO((LeaveRequest) this.requestRepository.save(newRequest));
             }
          }
       }
@@ -242,20 +233,6 @@ public class LeaveRequestService {
       dto.setReadByManager(lr.getReadByManager() != null && lr.getReadByManager());
       dto.setReadByEmployee(lr.getReadByEmployee() != null && lr.getReadByEmployee());
       return dto;
-   }
-
-   public List<LeaveBalanceResponseDTO> getSaldoByEmployee(Long employeeId) {
-      Employee employee = (Employee) this.employeeRepository.findById(employeeId)
-            .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato."));
-      return this.balanceRepository.findByEmployee(employee).stream().map((lb) -> {
-         LeaveBalanceResponseDTO dto = new LeaveBalanceResponseDTO();
-         dto.setLeaveType(lb.getLeaveType().name());
-         dto.setReferenceYear(lb.getReferenceYear());
-         dto.setTotalQuantity(lb.getTotalQuantity());
-         dto.setUsedQuantity(lb.getUsedQuantity());
-         dto.setRemainingBalance(lb.getRemainingBalance());
-         return dto;
-      }).toList();
    }
 
    @Transactional
@@ -293,20 +270,6 @@ public class LeaveRequestService {
       requestRepository.save(request);
    }
 
-   public void cambiaPassword(Long employeeId, String vecchiaPassword, String nuovaPassword) {
-      Employee employee = (Employee) this.employeeRepository.findById(employeeId)
-            .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato"));
-      if (!this.passwordEncoder.matches(vecchiaPassword, employee.getPassword())) {
-         throw new InvalidRequestException("La password attuale non è corretta.");
-      } else if (nuovaPassword != null && nuovaPassword.matches("^(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$")) {
-         employee.setPassword(this.passwordEncoder.encode(nuovaPassword));
-         this.employeeRepository.save(employee);
-      } else {
-         throw new InvalidRequestException(
-               "La password deve essere di almeno 8 caratteri e contenere almeno una maiuscola, un numero e un carattere speciale.");
-      }
-   }
-
    @Transactional
    public void markAsReadByManager(Long requestId, Long managerId) {
       LeaveRequest request = requestRepository.findById(requestId)
@@ -321,45 +284,11 @@ public class LeaveRequestService {
       requestRepository.save(request);
    }
 
-   private Set<LocalDate> getFestivita() {
+   private Set<LocalDate> getHolidays() {
       return holidayRepository.findAll()
             .stream()
             .map(Holiday::getDate)
             .collect(java.util.stream.Collectors.toSet());
-   }
-
-   @Transactional
-   public void impostaSaldo(Long employeeId, LeaveType tipo, int anno, BigDecimal quantita) {
-      Employee employee = employeeRepository.findById(employeeId)
-            .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato."));
-
-      LeaveBalance saldo = balanceRepository
-            .findByEmployeeAndReferenceYearAndLeaveType(employee, anno, tipo)
-            .orElseGet(() -> {
-               LeaveBalance nuovo = new LeaveBalance();
-               nuovo.setEmployee(employee);
-               nuovo.setReferenceYear(anno);
-               nuovo.setLeaveType(tipo);
-               nuovo.setUsedQuantity(BigDecimal.ZERO);
-               return nuovo;
-            });
-
-      saldo.setTotalQuantity(quantita);
-      balanceRepository.save(saldo);
-   }
-
-   public List<AllBalanceResponseDTO> getTuttiSaldi() {
-      return balanceRepository.findAll().stream().map(lb -> {
-         AllBalanceResponseDTO dto = new AllBalanceResponseDTO();
-         dto.setEmployeeId(lb.getEmployee().getEmployeeId());
-         dto.setEmployeeFullName(lb.getEmployee().getFirstName() + " " + lb.getEmployee().getLastName());
-         dto.setLeaveType(lb.getLeaveType().name());
-         dto.setReferenceYear(lb.getReferenceYear());
-         dto.setTotalQuantity(lb.getTotalQuantity());
-         dto.setUsedQuantity(lb.getUsedQuantity());
-         dto.setRemainingBalance(lb.getRemainingBalance());
-         return dto;
-      }).toList();
    }
 
 }

@@ -10,76 +10,76 @@ export class AdminService {
     constructor(private http: HttpClient) { }
 
     getDipendenti(page: number, size: number): Observable<any> {
-        return this.http.get<any>(`${this.baseUrl}/dipendenti?page=${page}&size=${size}`);
+        return this.http.get<any>(`${this.baseUrl}/employees?page=${page}&size=${size}`);
     }
 
     getResponsabili(): Observable<any[]> {
-        return this.http.get<any[]>(`${this.baseUrl}/responsabili`);
+        return this.http.get<any[]>(`${this.baseUrl}/managers`);
     }
 
 
     creaDipendente(data: any): Observable<string> {
-        return this.http.post(`${this.baseUrl}/dipendenti`, data, { responseType: 'text' });
+        return this.http.post(`${this.baseUrl}/employees`, data, { responseType: 'text' });
     }
 
     aggiornaDipendente(employeeId: number, data: any): Observable<string> {
-        return this.http.put(`${this.baseUrl}/dipendenti/${employeeId}`, data, { responseType: 'text' });
+        return this.http.put(`${this.baseUrl}/employees/${employeeId}`, data, { responseType: 'text' });
     }
 
     getReparti(): Observable<any[]> {
-        return this.http.get<any[]>(`${this.baseUrl}/reparti`);
+        return this.http.get<any[]>(`${this.baseUrl}/departments`);
     }
 
     creaReparto(name: string): Observable<string> {
-        return this.http.post(`${this.baseUrl}/reparti`, { name }, { responseType: 'text' });
+        return this.http.post(`${this.baseUrl}/departments`, { name }, { responseType: 'text' });
     }
 
     eliminaDipendente(employeeId: number): Observable<string> {
-        return this.http.delete(`${this.baseUrl}/dipendenti/${employeeId}`, { responseType: 'text' });
+        return this.http.delete(`${this.baseUrl}/employees/${employeeId}`, { responseType: 'text' });
     }
 
     getSaldoDipendente(employeeId: number): Observable<any[]> {
-        return this.http.get<any[]>(`${this.baseUrl}/dipendenti/${employeeId}/saldo`);
+        return this.http.get<any[]>(`${this.baseUrl}/employees/${employeeId}/balance`);
     }
 
     getFestivita(): Observable<any[]> {
-        return this.http.get<any[]>(`${this.baseUrl}/festivita`);
+        return this.http.get<any[]>(`${this.baseUrl}/holidays`);
     }
 
     aggiungiFestivita(data: string, description: string): Observable<any> {
-        return this.http.post<any>(`${this.baseUrl}/festivita`, { date: data, description: description });
+        return this.http.post<any>(`${this.baseUrl}/holidays`, { date: data, description: description });
     }
 
     eliminaFestivita(id: number): Observable<any> {
-        return this.http.delete(`${this.baseUrl}/festivita/${id}`, { responseType: 'text' });
+        return this.http.delete(`${this.baseUrl}/holidays/${id}`, { responseType: 'text' });
     }
 
     aggiornaFestivita(id: number, data: string, description: string): Observable<any> {
-        return this.http.put<any>(`${this.baseUrl}/festivita/${id}`, { date: data, description: description });
+        return this.http.put<any>(`${this.baseUrl}/holidays/${id}`, { date: data, description: description });
     }
 
     aggiornaReparto(id: number, name: string): Observable<any> {
-        return this.http.put<any>(`${this.baseUrl}/reparti/${id}`, { name });
+        return this.http.put<any>(`${this.baseUrl}/departments/${id}`, { name });
     }
 
     eliminaReparto(id: number): Observable<any> {
-        return this.http.delete(`${this.baseUrl}/reparti/${id}`, { responseType: 'text' });
+        return this.http.delete(`${this.baseUrl}/departments/${id}`, { responseType: 'text' });
     }
 
     impostaSaldo(employeeId: number, body: any): Observable<string> {
         return this.http.put(
-            `${this.baseUrl}/dipendenti/${employeeId}/saldo`,
+            `${this.baseUrl}/employees/${employeeId}/balance`,
             body,
             { responseType: 'text' }
         );
     }
 
     getTuttiSaldi(): Observable<any[]> {
-        return this.http.get<any[]>(`${this.baseUrl}/saldi`);
+        return this.http.get<any[]>(`${this.baseUrl}/balances`);
     }
 
     simulaMese(): Observable<string> {
-        return this.http.post(`${environment.apiUrl}/richieste/manager/simula-mese`, {}, { responseType: 'text' });
+        return this.http.post(`${environment.apiUrl}/requests/manager/simulate-month`, {}, { responseType: 'text' });
     }
 
 }
