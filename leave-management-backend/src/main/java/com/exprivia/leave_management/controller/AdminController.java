@@ -103,7 +103,7 @@ public class AdminController {
    }
 
    @GetMapping("/employees/{employeeId}/balance")
-   public ResponseEntity<List<LeaveBalanceResponseDTO>> getSaldoDipendente(@PathVariable Long employeeId) {
+   public ResponseEntity<List<LeaveBalanceResponseDTO>> getEmployeeBalance(@PathVariable Long employeeId) {
       return ResponseEntity.ok(leaveBalanceService.getBalanceByEmployee(employeeId));
    }
 

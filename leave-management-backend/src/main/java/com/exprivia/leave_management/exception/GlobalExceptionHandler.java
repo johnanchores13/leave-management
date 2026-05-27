@@ -7,7 +7,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
    @ExceptionHandler({ ResourceNotFoundException.class })
@@ -30,7 +32,7 @@ public class GlobalExceptionHandler {
 
    @ExceptionHandler({ Exception.class })
    public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
-      ex.printStackTrace();
+      log.error("Errore interno del server", ex);
       ErrorResponse error = new ErrorResponse(500, "Internal Server Error", "Si è verificato un errore interno.");
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
    }
@@ -45,7 +47,7 @@ public class GlobalExceptionHandler {
    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
       String message = ex.getBindingResult().getFieldErrors().stream()
             .map(err -> "• " + err.getDefaultMessage())
-            .collect(Collectors.joining("<br>"));
+            .collect(Collectors.joining("\n"));
 
       ErrorResponse error = new ErrorResponse(400, "Bad Request", message);
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);

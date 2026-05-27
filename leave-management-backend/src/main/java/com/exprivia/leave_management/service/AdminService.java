@@ -97,12 +97,12 @@ public class AdminService {
     }
 
     @Transactional
-    public void createDepartment(String nome) {
-        if (nome == null || nome.trim().isEmpty()) {
+    public void createDepartment(String name) {
+        if (name == null || name.trim().isEmpty()) {
             throw new InvalidRequestException("Il nome del reparto è obbligatorio.");
         }
         Department department = new Department();
-        department.setName(nome);
+        department.setName(name);
         departmentRepository.save(department);
     }
 

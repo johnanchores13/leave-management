@@ -9,64 +9,64 @@ export class AdminService {
 
     constructor(private http: HttpClient) { }
 
-    getDipendenti(page: number, size: number): Observable<any> {
+    getEmployees(page: number, size: number): Observable<any> {
         return this.http.get<any>(`${this.baseUrl}/employees?page=${page}&size=${size}`);
     }
 
-    getResponsabili(): Observable<any[]> {
+    getManagers(): Observable<any[]> {
         return this.http.get<any[]>(`${this.baseUrl}/managers`);
     }
 
 
-    creaDipendente(data: any): Observable<string> {
+    createEmployee(data: any): Observable<string> {
         return this.http.post(`${this.baseUrl}/employees`, data, { responseType: 'text' });
     }
 
-    aggiornaDipendente(employeeId: number, data: any): Observable<string> {
+    updateEmployee(employeeId: number, data: any): Observable<string> {
         return this.http.put(`${this.baseUrl}/employees/${employeeId}`, data, { responseType: 'text' });
     }
 
-    getReparti(): Observable<any[]> {
+    getDepartments(): Observable<any[]> {
         return this.http.get<any[]>(`${this.baseUrl}/departments`);
     }
 
-    creaReparto(name: string): Observable<string> {
+    createDepartment(name: string): Observable<string> {
         return this.http.post(`${this.baseUrl}/departments`, { name }, { responseType: 'text' });
     }
 
-    eliminaDipendente(employeeId: number): Observable<string> {
+    deleteEmployee(employeeId: number): Observable<string> {
         return this.http.delete(`${this.baseUrl}/employees/${employeeId}`, { responseType: 'text' });
     }
 
-    getSaldoDipendente(employeeId: number): Observable<any[]> {
+    getEmployeeBalance(employeeId: number): Observable<any[]> {
         return this.http.get<any[]>(`${this.baseUrl}/employees/${employeeId}/balance`);
     }
 
-    getFestivita(): Observable<any[]> {
+    getHolidays(): Observable<any[]> {
         return this.http.get<any[]>(`${this.baseUrl}/holidays`);
     }
 
-    aggiungiFestivita(data: string, description: string): Observable<any> {
-        return this.http.post<any>(`${this.baseUrl}/holidays`, { date: data, description: description });
+    addHoliday(date: string, description: string): Observable<any> {
+        return this.http.post<any>(`${this.baseUrl}/holidays`, { date: date, description: description });
     }
 
-    eliminaFestivita(id: number): Observable<any> {
+    deleteHoliday(id: number): Observable<any> {
         return this.http.delete(`${this.baseUrl}/holidays/${id}`, { responseType: 'text' });
     }
 
-    aggiornaFestivita(id: number, data: string, description: string): Observable<any> {
-        return this.http.put<any>(`${this.baseUrl}/holidays/${id}`, { date: data, description: description });
+    updateHoliday(id: number, date: string, description: string): Observable<any> {
+        return this.http.put<any>(`${this.baseUrl}/holidays/${id}`, { date: date, description: description });
     }
 
-    aggiornaReparto(id: number, name: string): Observable<any> {
+    updateDepartment(id: number, name: string): Observable<any> {
         return this.http.put<any>(`${this.baseUrl}/departments/${id}`, { name });
     }
 
-    eliminaReparto(id: number): Observable<any> {
+    deleteDepartment(id: number): Observable<any> {
         return this.http.delete(`${this.baseUrl}/departments/${id}`, { responseType: 'text' });
     }
 
-    impostaSaldo(employeeId: number, body: any): Observable<string> {
+    setEmployeeBalance(employeeId: number, body: any): Observable<string> {
         return this.http.put(
             `${this.baseUrl}/employees/${employeeId}/balance`,
             body,
@@ -74,11 +74,11 @@ export class AdminService {
         );
     }
 
-    getTuttiSaldi(): Observable<any[]> {
+    getAllBalances(): Observable<any[]> {
         return this.http.get<any[]>(`${this.baseUrl}/balances`);
     }
 
-    simulaMese(): Observable<string> {
+    simulateMonth(): Observable<string> {
         return this.http.post(`${environment.apiUrl}/requests/manager/simulate-month`, {}, { responseType: 'text' });
     }
 

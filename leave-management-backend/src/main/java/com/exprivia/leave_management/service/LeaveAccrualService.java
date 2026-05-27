@@ -20,35 +20,38 @@ public class LeaveAccrualService {
    @Autowired
    private BalanceRepository balanceRepository;
 
-   @Scheduled(
-      cron = "0 0 0 1 * ?"
-   )
+   @Scheduled(cron = "0 0 0 1 * ?")
    @Transactional
-   public void accreditRateiMensili() {
-      int annoCorrente = LocalDate.now().getYear();
-      List<Employee> dipendenti = this.employeeRepository.findAll();
-      BigDecimal ferieMensili = new BigDecimal("1.67");
-      BigDecimal permessiMensili = new BigDecimal("4.00");
+   public void creditMonthlyAccruals() {
+      int currentYear = LocalDate.now().getYear();
+      List<Employee> employees = this.employeeRepository.findAll();
+      BigDecimal monthlyVacation = new BigDecimal("1.67");
+      BigDecimal monthlyPermit = new BigDecimal("4.00");
 
-      for(Employee dipendente : dipendenti) {
-         this.accreditaFerie(dipendente, annoCorrente, LeaveType.VACATION, ferieMensili);
-         this.accreditaFerie(dipendente, annoCorrente, LeaveType.PERMIT, permessiMensili);
+      for (Employee employee : employees) {
+         this.creditLeave(employee, currentYear, LeaveType.VACATION, monthlyVacation);
+         this.creditLeave(employee, currentYear, LeaveType.PERMIT, monthlyPermit);
       }
 
    }
 
-   private void accreditaFerie(Employee dipendente, int anno, LeaveType tipo, BigDecimal quantita) {
-      LeaveBalance saldo = (LeaveBalance)this.balanceRepository.findByEmployeeAndReferenceYearAndLeaveType(dipendente, anno, tipo).orElseGet(() -> {
-         LeaveBalance nuovoSaldo = new LeaveBalance();
-         nuovoSaldo.setEmployee(dipendente);
-         nuovoSaldo.setReferenceYear(anno);
-         nuovoSaldo.setLeaveType(tipo);
-         nuovoSaldo.setUsedQuantity(BigDecimal.ZERO);
-         BigDecimal riporto = (BigDecimal)this.balanceRepository.findByEmployeeAndReferenceYearAndLeaveType(dipendente, anno - 1, tipo).map((vecchio) -> vecchio.getTotalQuantity().subtract(vecchio.getUsedQuantity())).filter((residuo) -> residuo.compareTo(BigDecimal.ZERO) > 0).orElse(BigDecimal.ZERO);
-         nuovoSaldo.setTotalQuantity(riporto);
-         return nuovoSaldo;
-      });
-      saldo.setTotalQuantity(saldo.getTotalQuantity().add(quantita));
-      this.balanceRepository.save(saldo);
+   private void creditLeave(Employee employee, int year, LeaveType leaveType, BigDecimal quantity) {
+      LeaveBalance balance = (LeaveBalance) this.balanceRepository
+            .findByEmployeeAndReferenceYearAndLeaveType(employee, year, leaveType).orElseGet(() -> {
+               LeaveBalance newBalance = new LeaveBalance();
+               newBalance.setEmployee(employee);
+               newBalance.setReferenceYear(year);
+               newBalance.setLeaveType(leaveType);
+               newBalance.setUsedQuantity(BigDecimal.ZERO);
+               BigDecimal carryOver = (BigDecimal) this.balanceRepository
+                     .findByEmployeeAndReferenceYearAndLeaveType(employee, year - 1, leaveType)
+                     .map((previousBalance) -> previousBalance.getTotalQuantity()
+                           .subtract(previousBalance.getUsedQuantity()))
+                     .filter((remaining) -> remaining.compareTo(BigDecimal.ZERO) > 0).orElse(BigDecimal.ZERO);
+               newBalance.setTotalQuantity(carryOver);
+               return newBalance;
+            });
+      balance.setTotalQuantity(balance.getTotalQuantity().add(quantity));
+      this.balanceRepository.save(balance);
    }
 }

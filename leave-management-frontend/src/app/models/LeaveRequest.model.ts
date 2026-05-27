@@ -1,4 +1,4 @@
-export interface Richiesta {
+export interface LeaveRequest {
     requestId: number;
     startDate: string;
     endDate: string;

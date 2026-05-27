@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LeaveRequestService } from '../../services/leave-request';
 import { AuthService } from '../../services/auth.service';
-import { Richiesta } from '../../models/richiesta.model';
+import { LeaveRequest } from '../../models/LeaveRequest.model';
 import Swal from 'sweetalert2';
 import { Router } from '@angular/router';
 import { RouterModule } from '@angular/router';
@@ -16,8 +16,8 @@ import { FormatDataPipe } from '../../pipes/format-data.pipe';
   styleUrl: './manager.css'
 })
 export class ManagerComponent implements OnInit {
-  listaInAttesa: Richiesta[] = [];
-  listaStorico: Richiesta[] = [];
+  listaInAttesa: LeaveRequest[] = [];
+  listaStorico: LeaveRequest[] = [];
   unreadCount: number = 0;
   pollingInterval: any;
   meseCorrente: Date = new Date();
@@ -65,7 +65,7 @@ export class ManagerComponent implements OnInit {
   }
 
   caricaRichiestePolling() {
-    this.leaveRequestService.getRichiesteByManager().subscribe({
+    this.leaveRequestService.getManagerRequests().subscribe({
       next: data => {
         this.listaInAttesa = data.filter(r => r.leaveStatus === 'PENDING');
         this.listaStorico = data.filter(r => r.leaveStatus !== 'PENDING');
@@ -78,7 +78,7 @@ export class ManagerComponent implements OnInit {
   }
 
   caricaRichieste() {
-    this.leaveRequestService.getRichiesteByManager().subscribe({
+    this.leaveRequestService.getManagerRequests().subscribe({
       next: data => {
         this.listaInAttesa = data.filter(r => r.leaveStatus === 'PENDING');
         this.listaStorico = data.filter(r => r.leaveStatus !== 'PENDING');
@@ -88,7 +88,7 @@ export class ManagerComponent implements OnInit {
         this.unreadCount = nuove.length;
         this.cdr.detectChanges();
         nuove.forEach(r => {
-          this.leaveRequestService.segnaComeLettaManager(r.requestId).subscribe();
+          this.leaveRequestService.markAsReadByManager(r.requestId).subscribe();
         });
       },
       error: err => console.error('Errore:', err)
@@ -96,8 +96,8 @@ export class ManagerComponent implements OnInit {
   }
 
   approva(id: number) {
-    this.leaveRequestService.segnaComeLettaManager(id).subscribe();
-    this.leaveRequestService.approva(id).subscribe({
+    this.leaveRequestService.markAsReadByManager(id).subscribe();
+    this.leaveRequestService.approve(id).subscribe({
       next: () => {
         Swal.fire('Fatto', 'La richiesta è stata approvata.', 'success').then(() => {
           this.caricaRichieste();
@@ -133,8 +133,8 @@ export class ManagerComponent implements OnInit {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        this.leaveRequestService.segnaComeLettaManager(id).subscribe();
-        this.leaveRequestService.rifiuta(id, result.value).subscribe({
+        this.leaveRequestService.markAsReadByManager(id).subscribe();
+        this.leaveRequestService.reject(id, result.value).subscribe({
           next: () => {
             Swal.fire('Rifiutata', 'La richiesta è stata rifiutata.', 'success').then(() => {
               this.caricaRichieste();
@@ -153,7 +153,7 @@ export class ManagerComponent implements OnInit {
 
   private formatDataPipe = new FormatDataPipe();
 
-  formatPeriodo(r: Richiesta): string {
+  formatPeriodo(r: LeaveRequest): string {
     if (r.leaveType === 'VACATION') {
       return `${this.formatDataPipe.transform(r.startDate)} → ${this.formatDataPipe.transform(r.endDate)}`;
     } else {
@@ -165,10 +165,10 @@ export class ManagerComponent implements OnInit {
   }
 
   vediSaldo(employeeId: number, nome: string) {
-    this.leaveRequestService.getSaldoDipendentePerManager(employeeId).subscribe({
-      next: (saldi) => {
+    this.leaveRequestService.getEmployeeBalanceForManager(employeeId).subscribe({
+      next: (balances) => {
         const annoCorrente = new Date().getFullYear();
-        const saldoAnno = saldi.filter(s => s.referenceYear === annoCorrente);
+        const saldoAnno = balances.filter(s => s.referenceYear === annoCorrente);
 
         if (saldoAnno.length === 0) {
           Swal.fire('Saldo', `${nome} non ha saldi per l'anno corrente.`, 'info');

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { LeaveRequestService } from '../../services/leave-request';
 import { AuthService } from '../../services/auth.service';
-import { Richiesta } from '../../models/richiesta.model';
+import { LeaveRequest } from '../../models/LeaveRequest.model';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import { RouterModule } from '@angular/router';
@@ -20,7 +20,7 @@ import { FormatDataPipe } from '../../pipes/format-data.pipe';
 export class EmployeeComponent implements OnInit {
 
 
-  listaRichieste: Richiesta[] = [];
+  listaRichieste: LeaveRequest[] = [];
   saldo: any[] = [];
   employeeId: number | null = null;
   activeSection: string = 'nuova';
@@ -32,7 +32,7 @@ export class EmployeeComponent implements OnInit {
   isNotificationsModalOpen = false;
 
   managerUnreadCount = 0;
-  managerUnreadList: Richiesta[] = [];
+  managerUnreadList: LeaveRequest[] = [];
 
   toggleMenu() {
     this.isMenuOpen = !this.isMenuOpen;
@@ -48,10 +48,10 @@ export class EmployeeComponent implements OnInit {
   }
 
   chiudiNotifiche() {
-    const unread = this.storicoRichieste.filter(r => r.readByEmployee === false);
+    const unread = this.listaRichieste.filter(r => r.readByEmployee === false);
     if (unread.length > 0) {
       unread.forEach(r => {
-        this.leaveRequestService.segnaComeLetta(r.requestId!).subscribe();
+        this.leaveRequestService.markAsReadEmployee(r.requestId!).subscribe();
         r.readByEmployee = true;
       });
       this.cdr.detectChanges();
@@ -93,7 +93,7 @@ export class EmployeeComponent implements OnInit {
   }
 
   caricaProfilo() {
-    this.leaveRequestService.getProfilo().subscribe({
+    this.leaveRequestService.getProfile().subscribe({
       next: data => {
         this.profilo = data;
         this.cdr.detectChanges();
@@ -103,7 +103,7 @@ export class EmployeeComponent implements OnInit {
 
   caricaRichiesteSilenziosamente() {
     if (!this.employeeId) return;
-    this.leaveRequestService.getRichieste()
+    this.leaveRequestService.getRequests()
       .subscribe({
         next: data => {
           this.listaRichieste = data;
@@ -114,7 +114,7 @@ export class EmployeeComponent implements OnInit {
 
   caricaRichieste() {
     if (!this.employeeId) return;
-    this.leaveRequestService.getRichieste()
+    this.leaveRequestService.getRequests()
       .subscribe({
         next: data => {
           this.listaRichieste = data;
@@ -152,7 +152,7 @@ export class EmployeeComponent implements OnInit {
       richiesta.endDate = `${formValue.permitDate} ${formValue.endTime}`;
     }
 
-    this.leaveRequestService.inviaRichiesta(richiesta).subscribe({
+    this.leaveRequestService.submitRequest(richiesta).subscribe({
       next: () => {
         Swal.fire('Inviata.', 'La tua richiesta è stata inviata con successo.', 'success');
         this.caricaRichieste();
@@ -180,7 +180,7 @@ export class EmployeeComponent implements OnInit {
 
   caricaSaldo() {
     if (!this.employeeId) return;
-    this.leaveRequestService.getSaldo()
+    this.leaveRequestService.getBalance()
       .subscribe({
         next: data => {
           this.saldo = data;
@@ -201,7 +201,7 @@ export class EmployeeComponent implements OnInit {
       cancelButtonText: 'No, torna indietro'
     }).then((result) => {
       if (result.isConfirmed) {
-        this.leaveRequestService.annullaRichiesta(requestId).subscribe({
+        this.leaveRequestService.cancelRequest(requestId).subscribe({
           next: () => {
             Swal.fire('Annullata.', 'La richiesta è stata cancellata.', 'success');
             this.caricaRichieste();
@@ -218,7 +218,7 @@ export class EmployeeComponent implements OnInit {
 
 
   leggiNotifica(id: number) {
-    this.leaveRequestService.segnaComeLetta(id).subscribe({
+    this.leaveRequestService.markAsReadEmployee(id).subscribe({
       next: () => {
         const req = this.listaRichieste.find(r => r.requestId === id);
         if (req) {
@@ -231,7 +231,7 @@ export class EmployeeComponent implements OnInit {
   }
 
   caricaRichiesteManager() {
-    this.leaveRequestService.getRichiesteByManager().subscribe({
+    this.leaveRequestService.getManagerRequests().subscribe({
       next: data => {
         const inAttesa = data.filter(r => r.leaveStatus === 'PENDING');
         this.managerUnreadList = inAttesa.filter(r => !r.readByManager);
@@ -270,7 +270,7 @@ export class EmployeeComponent implements OnInit {
       Swal.fire('Attenzione', 'Compila entrambi i campi.', 'warning');
       return;
     }
-    this.leaveRequestService.cambiaPassword(this.oldPassword, this.newPassword).subscribe({
+    this.leaveRequestService.changePassword(this.oldPassword, this.newPassword).subscribe({
       next: () => {
         Swal.fire('Fatto', 'La password è stata aggiornata.', 'success');
         this.oldPassword = '';
@@ -300,7 +300,7 @@ export class EmployeeComponent implements OnInit {
 
   private formatDataPipe = new FormatDataPipe();
 
-  formatPeriodo(r: Richiesta): string {
+  formatPeriodo(r: LeaveRequest): string {
     if (r.leaveType === 'VACATION') {
       return `${this.formatDataPipe.transform(r.startDate)} → ${this.formatDataPipe.transform(r.endDate)}`;
     } else {

@@ -140,23 +140,23 @@ public class DatabaseSeeder {
                 emp4.setHiringDate(LocalDate.of(2024, 2, 1));
                 employeeRepository.save(emp4);
 
-                int anno = LocalDate.now().getYear();
+                int year = LocalDate.now().getYear();
                 for (Employee e : Arrays.asList(manager1, manager2, emp1, emp2, emp3, emp4)) {
-                    LeaveBalance ferie = new LeaveBalance();
-                    ferie.setEmployee(e);
-                    ferie.setLeaveType(LeaveType.VACATION);
-                    ferie.setReferenceYear(anno);
-                    ferie.setTotalQuantity(BigDecimal.valueOf(20));
-                    ferie.setUsedQuantity(BigDecimal.ZERO);
+                    LeaveBalance vacation = new LeaveBalance();
+                    vacation.setEmployee(e);
+                    vacation.setLeaveType(LeaveType.VACATION);
+                    vacation.setReferenceYear(year);
+                    vacation.setTotalQuantity(BigDecimal.valueOf(20));
+                    vacation.setUsedQuantity(BigDecimal.ZERO);
 
-                    LeaveBalance permessi = new LeaveBalance();
-                    permessi.setEmployee(e);
-                    permessi.setLeaveType(LeaveType.PERMIT);
-                    permessi.setReferenceYear(anno);
-                    permessi.setTotalQuantity(BigDecimal.valueOf(48));
-                    permessi.setUsedQuantity(BigDecimal.ZERO);
+                    LeaveBalance permits = new LeaveBalance();
+                    permits.setEmployee(e);
+                    permits.setLeaveType(LeaveType.PERMIT);
+                    permits.setReferenceYear(year);
+                    permits.setTotalQuantity(BigDecimal.valueOf(48));
+                    permits.setUsedQuantity(BigDecimal.ZERO);
 
-                    balanceRepository.saveAll(Arrays.asList(ferie, permessi));
+                    balanceRepository.saveAll(Arrays.asList(vacation, permits));
                 }
             }
         };

@@ -1,6 +1,7 @@
 package com.exprivia.leave_management.controller;
 
 import com.exprivia.leave_management.config.JwtUtil;
+import com.exprivia.leave_management.dto.ChangePasswordDTO;
 import com.exprivia.leave_management.dto.LeaveBalanceResponseDTO;
 import com.exprivia.leave_management.dto.LeaveRequestDTO;
 import com.exprivia.leave_management.dto.LeaveRequestResponseDTO;
@@ -91,7 +92,7 @@ public class RequestController {
    }
 
    @GetMapping({ "/balance" })
-   public ResponseEntity<List<LeaveBalanceResponseDTO>> getSaldo(HttpServletRequest request) {
+   public ResponseEntity<List<LeaveBalanceResponseDTO>> getBalance(HttpServletRequest request) {
       Long employeeId = this.getAuthenticatedEmployeeId(request);
       return ResponseEntity.ok(this.leaveBalanceService.getBalanceByEmployee(employeeId));
    }
@@ -138,37 +139,37 @@ public class RequestController {
    @PreAuthorize("hasRole('ADMIN')")
    @PostMapping("/manager/simulate-month")
    public ResponseEntity<String> simulaAccreditoMensile() {
-      accrualService.accreditRateiMensili();
+      accrualService.creditMonthlyAccruals();
       return ResponseEntity.ok("Ferie e permessi caricati con successo.");
    }
 
    @PutMapping({ "/change-password" })
-   public ResponseEntity<String> changePassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
+   public ResponseEntity<String> changePassword(@RequestBody @Valid ChangePasswordDTO dto, HttpServletRequest request) {
       Long employeeId = this.getAuthenticatedEmployeeId(request);
-      String vecchiaPassword = (String) body.get("oldPassword");
-      String nuovaPassword = (String) body.get("newPassword");
-      this.authService.changePassword(employeeId, vecchiaPassword, nuovaPassword);
+      String oldPassword = dto.getOldPassword();
+      String newPassword = dto.getNewPassword();
+      this.authService.changePassword(employeeId, oldPassword, newPassword);
       return ResponseEntity.ok("Password aggiornata con successo.");
    }
 
    @GetMapping("/me")
-   public ResponseEntity<ProfileDTO> getProfilo(HttpServletRequest request) {
+   public ResponseEntity<ProfileDTO> getProfile(HttpServletRequest request) {
       Long employeeId = getAuthenticatedEmployeeId(request);
       return ResponseEntity.ok(employeeService.getProfile(employeeId));
    }
 
    @PreAuthorize("hasRole('RESPONSABILE')")
    @GetMapping("/manager/employees/{employeeId}/balance")
-   public ResponseEntity<List<LeaveBalanceResponseDTO>> getSaldoDipendentePerManager(
+   public ResponseEntity<List<LeaveBalanceResponseDTO>> getEmployeeBalanceByManager(
          @PathVariable Long employeeId,
          HttpServletRequest request) {
 
       Long managerId = getAuthenticatedEmployeeId(request);
 
-      Employee dipendente = employeeRepository.findById(employeeId)
+      Employee employee = employeeRepository.findById(employeeId)
             .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato."));
 
-      if (dipendente.getManager() == null || !dipendente.getManager().getEmployeeId().equals(managerId)) {
+      if (employee.getManager() == null || !employee.getManager().getEmployeeId().equals(managerId)) {
          throw new UnauthorizedException("Non sei autorizzato a vedere il saldo di questo dipendente.");
       }
 

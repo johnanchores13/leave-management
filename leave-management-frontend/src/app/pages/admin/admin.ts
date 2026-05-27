@@ -81,7 +81,7 @@ export class AdminComponent implements OnInit {
     }
 
     caricaDipendenti() {
-        this.adminService.getDipendenti(this.currentPage, this.pageSize).subscribe({
+        this.adminService.getEmployees(this.currentPage, this.pageSize).subscribe({
             next: (data: any) => {
                 this.listaDipendenti = data.content;
                 this.totalPages = data.totalPages;
@@ -92,7 +92,7 @@ export class AdminComponent implements OnInit {
     }
 
     caricaResponsabili() {
-        this.adminService.getResponsabili().subscribe({
+        this.adminService.getManagers().subscribe({
             next: data => {
                 this.dipendentiResponsabili = data;
                 this.cdr.detectChanges();
@@ -133,7 +133,7 @@ export class AdminComponent implements OnInit {
             departmentId: raw.departmentId ? Number(raw.departmentId) : null,
             managerId: raw.managerId ? Number(raw.managerId) : null,
         };
-        this.adminService.creaDipendente(payload).subscribe({
+        this.adminService.createEmployee(payload).subscribe({
             next: () => {
                 Swal.fire('Fatto!', 'Dipendente creato con successo.', 'success');
                 this.employeeForm.reset({ role: 'DIPENDENTE', hiringDate: '' });
@@ -148,7 +148,7 @@ export class AdminComponent implements OnInit {
     }
 
     caricaReparti() {
-        this.adminService.getReparti().subscribe({
+        this.adminService.getDepartments().subscribe({
             next: data => this.listaReparti = data,
             error: err => console.error('Errore caricamento reparti:', err)
         });
@@ -162,7 +162,7 @@ export class AdminComponent implements OnInit {
         if (this.repartoForm.invalid) return;
 
         if (this.repartoInModifica) {
-            this.adminService.aggiornaReparto(this.repartoInModifica.departmentId, this.repartoForm.value.name!).subscribe({
+            this.adminService.updateDepartment(this.repartoInModifica.departmentId, this.repartoForm.value.name!).subscribe({
                 next: () => {
                     this.caricaReparti();
                     this.chiudiModalReparto();
@@ -171,7 +171,7 @@ export class AdminComponent implements OnInit {
                 error: err => Swal.fire('Errore', 'Errore durante la modifica', 'error')
             });
         } else {
-            this.adminService.creaReparto(this.repartoForm.value.name!).subscribe({
+            this.adminService.createDepartment(this.repartoForm.value.name!).subscribe({
                 next: () => {
                     this.caricaReparti();
                     this.chiudiModalReparto();
@@ -183,7 +183,7 @@ export class AdminComponent implements OnInit {
     }
 
     eliminaReparto(id: number) {
-        this.adminService.eliminaReparto(id).subscribe({
+        this.adminService.deleteDepartment(id).subscribe({
             next: () => {
                 this.caricaReparti();
                 Swal.fire('Successo', 'Reparto eliminato!', 'success');
@@ -210,7 +210,7 @@ export class AdminComponent implements OnInit {
             cancelButtonText: 'Annulla'
         }).then(result => {
             if (result.isConfirmed) {
-                this.adminService.eliminaDipendente(employeeId).subscribe({
+                this.adminService.deleteEmployee(employeeId).subscribe({
                     next: () => {
                         Swal.fire('Eliminato!', 'Il dipendente è stato rimosso.', 'success');
                         this.caricaDipendenti();
@@ -225,7 +225,7 @@ export class AdminComponent implements OnInit {
     }
 
     vedisaldo(employeeId: number, nome: string) {
-        this.adminService.getSaldoDipendente(employeeId).subscribe({
+        this.adminService.getEmployeeBalance(employeeId).subscribe({
             next: (saldi) => {
                 const annoCorrente = new Date().getFullYear();
                 const saldoAnno = saldi.filter(s => s.referenceYear === annoCorrente);
@@ -270,7 +270,7 @@ export class AdminComponent implements OnInit {
     }
 
     caricaFestivita() {
-        this.adminService.getFestivita().subscribe({
+        this.adminService.getHolidays().subscribe({
             next: data => {
                 this.listaFestivita = data;
                 this.cdr.detectChanges();
@@ -299,7 +299,7 @@ export class AdminComponent implements OnInit {
         const { date, description } = this.festivitaForm.value;
 
         if (this.festivitaInModifica) {
-            this.adminService.aggiornaFestivita(this.festivitaInModifica.id, date!, description!).subscribe({
+            this.adminService.updateHoliday(this.festivitaInModifica.id, date!, description!).subscribe({
                 next: () => {
                     this.caricaFestivita();
                     this.chiudiModalFestivita();
@@ -307,7 +307,7 @@ export class AdminComponent implements OnInit {
                 }
             });
         } else {
-            this.adminService.aggiungiFestivita(date!, description!).subscribe({
+            this.adminService.addHoliday(date!, description!).subscribe({
                 next: () => {
                     this.caricaFestivita();
                     this.chiudiModalFestivita();
@@ -328,7 +328,7 @@ export class AdminComponent implements OnInit {
             cancelButtonText: 'Annulla'
         }).then(result => {
             if (result.isConfirmed) {
-                this.adminService.eliminaFestivita(id).subscribe({
+                this.adminService.deleteHoliday(id).subscribe({
                     next: () => {
                         Swal.fire('Eliminata!', 'La festività è stata rimossa.', 'success');
                         this.caricaFestivita();
@@ -375,7 +375,7 @@ export class AdminComponent implements OnInit {
             return;
         }
 
-        this.adminService.aggiornaDipendente(this.dipendenteDaModificare, body).subscribe({
+        this.adminService.updateEmployee(this.dipendenteDaModificare, body).subscribe({
             next: () => {
                 Swal.fire('Aggiornato!', 'Dipendente aggiornato con successo.', 'success');
                 this.chiudiModalModificaDipendente();
@@ -406,7 +406,7 @@ export class AdminComponent implements OnInit {
     });
 
     caricaTuttiDipendenti() {
-        this.adminService.getDipendenti(0, 1000).subscribe({
+        this.adminService.getEmployees(0, 1000).subscribe({
             next: (data: any) => {
                 this.listaTuttiDipendenti = data.content;
                 this.cdr.detectChanges();
@@ -416,7 +416,7 @@ export class AdminComponent implements OnInit {
     }
 
     caricaSaldi() {
-        this.adminService.getTuttiSaldi().subscribe({
+        this.adminService.getAllBalances().subscribe({
             next: data => {
                 this.listaSaldi = data;
                 this.cdr.detectChanges();
@@ -454,7 +454,7 @@ export class AdminComponent implements OnInit {
             return;
         }
         const { employeeId, leaveType, referenceYear, totalQuantity } = this.saldoForm.value;
-        this.adminService.impostaSaldo(Number(employeeId), {
+        this.adminService.setEmployeeBalance(Number(employeeId), {
             leaveType,
             referenceYear: Number(referenceYear),
             totalQuantity: Number(totalQuantity)
@@ -481,7 +481,7 @@ export class AdminComponent implements OnInit {
             cancelButtonText: 'Annulla'
         }).then(result => {
             if (result.isConfirmed) {
-                this.adminService.simulaMese().subscribe({
+                this.adminService.simulateMonth().subscribe({
                     next: () => Swal.fire('Fatto!', 'Ferie e permessi accreditati.', 'success'),
                     error: () => Swal.fire('Errore', 'Impossibile simulare il mese.', 'error')
                 });

@@ -89,13 +89,13 @@ public class AuthService {
         this.register(request);
     }
 
-    public void changePassword(Long employeeId, String vecchiaPassword, String nuovaPassword) {
+    public void changePassword(Long employeeId, String oldPassword, String newPassword) {
         Employee employee = (Employee) this.employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato"));
-        if (!this.passwordEncoder.matches(vecchiaPassword, employee.getPassword())) {
+        if (!this.passwordEncoder.matches(oldPassword, employee.getPassword())) {
             throw new InvalidRequestException("La password attuale non è corretta.");
-        } else if (nuovaPassword != null && nuovaPassword.matches("^(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$")) {
-            employee.setPassword(this.passwordEncoder.encode(nuovaPassword));
+        } else if (newPassword != null) {
+            employee.setPassword(this.passwordEncoder.encode(newPassword));
             this.employeeRepository.save(employee);
         } else {
             throw new InvalidRequestException(
