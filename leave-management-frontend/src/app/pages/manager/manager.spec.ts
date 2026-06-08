@@ -1,20 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { ManagerComponent } from './manager';
+
+import { Manager } from './manager';
 
 describe('Manager', () => {
-  let component: ManagerComponent;
-  let fixture: ComponentFixture<ManagerComponent>;
-
-
+  let component: Manager;
+  let fixture: ComponentFixture<Manager>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ManagerComponent],
-      providers: [provideRouter([])]
+      imports: [Manager],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ManagerComponent);
+    fixture = TestBed.createComponent(Manager);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

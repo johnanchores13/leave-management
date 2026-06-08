@@ -7,9 +7,7 @@ import com.exprivia.leave_management.repository.EmployeeRepository;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Service
 public class EmployeeService {
    @Autowired
@@ -18,10 +16,10 @@ public class EmployeeService {
    public Employee saveEmployee(Employee employee) {
       return (Employee) this.employeeRepository.findBySerialNumber(employee.getSerialNumber())
             .map((existingEmployee) -> {
-               log.info("Dipendente {} già presente.", employee.getSerialNumber());
+               System.out.println("Dipendente " + employee.getSerialNumber() + " già presente.");
                return existingEmployee;
             }).orElseGet(() -> {
-               log.info("Salvataggio nuovo dipendente: {}", employee.getSerialNumber());
+               System.out.println("Salvataggio nuovo dipendente: " + employee.getSerialNumber());
                return (Employee) this.employeeRepository.save(employee);
             });
    }

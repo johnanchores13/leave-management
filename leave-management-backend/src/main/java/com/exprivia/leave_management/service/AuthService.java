@@ -94,7 +94,7 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("Dipendente non trovato"));
         if (!this.passwordEncoder.matches(oldPassword, employee.getPassword())) {
             throw new InvalidRequestException("La password attuale non è corretta.");
-        } else if (newPassword != null) {
+        } else if (newPassword != null && newPassword.matches("^(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$")) {
             employee.setPassword(this.passwordEncoder.encode(newPassword));
             this.employeeRepository.save(employee);
         } else {

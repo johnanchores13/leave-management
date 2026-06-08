@@ -1,7 +1,6 @@
 package com.exprivia.leave_management.controller;
 
 import com.exprivia.leave_management.config.JwtUtil;
-import com.exprivia.leave_management.dto.ChangePasswordDTO;
 import com.exprivia.leave_management.dto.LeaveBalanceResponseDTO;
 import com.exprivia.leave_management.dto.LeaveRequestDTO;
 import com.exprivia.leave_management.dto.LeaveRequestResponseDTO;
@@ -144,10 +143,10 @@ public class RequestController {
    }
 
    @PutMapping({ "/change-password" })
-   public ResponseEntity<String> changePassword(@RequestBody @Valid ChangePasswordDTO dto, HttpServletRequest request) {
+   public ResponseEntity<String> changePassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
       Long employeeId = this.getAuthenticatedEmployeeId(request);
-      String oldPassword = dto.getOldPassword();
-      String newPassword = dto.getNewPassword();
+      String oldPassword = (String) body.get("oldPassword");
+      String newPassword = (String) body.get("newPassword");
       this.authService.changePassword(employeeId, oldPassword, newPassword);
       return ResponseEntity.ok("Password aggiornata con successo.");
    }
