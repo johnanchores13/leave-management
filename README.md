@@ -2,7 +2,6 @@ Gestione Ferie e Permessi
 
 Questo progetto è un'applicazione web full-stack sviluppata per digitalizzare e semplificare il processo aziendale di richiesta, approvazione e tracciamento di ferie e permessi.
 
-Tecnologie Utilizzate
 L'architettura è divisa tra Backend (API RESTful) e Frontend (Single Page Application).
 
 Backend:
